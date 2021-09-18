@@ -1,6 +1,7 @@
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+    - feature/*
 
 env:
   AZURE_WEBAPP_NAME: azwe-webapp-d01-auth
