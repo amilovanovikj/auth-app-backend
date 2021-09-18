@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "execute": "node dist/index.js",
+    "build": "tsc",
     "database": "mysqld --console",
     "start": "nodemon --exec ts-node src/index.ts"
   },
