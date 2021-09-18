@@ -1,0 +1,41 @@
+{
+  "name": "auth-app-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "execute": "node dist/index.js",
+    "database": "mysqld --console",
+    "start": "nodemon --exec ts-node src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/connect-redis": "^0.0.17",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "@types/express-session": "^1.17.4",
+    "@types/node": "^16.9.1",
+    "@types/redis": "^2.8.32",
+    "concurrently": "^6.2.1",
+    "nodemon": "^2.0.12",
+    "typescript": "^4.4.3"
+  },
+  "dependencies": {
+    "apollo-server-express": "^3.3.0",
+    "argon2": "^0.28.2",
+    "connect-redis": "^6.0.0",
+    "connect-session-knex": "^2.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-session": "^1.17.2",
+    "graphql": "^15.5.3",
+    "ioredis": "^4.27.9",
+    "mysql": "^2.18.1",
+    "redis": "^3.1.2",
+    "ts-node": "^10.2.1",
+    "type-graphql": "^1.1.1",
+    "typeorm": "^0.2.37"
+  }
+}
