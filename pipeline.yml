@@ -22,7 +22,7 @@ jobs:
     - name: Build
       run: |
         yarn
-        yarn run build --if-present
+        yarn run build
     - name: Deploy
       uses: azure/webapps-deploy@v2
       with:
