@@ -19,10 +19,39 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: ${{ env.NODE_VERSION }}
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+    - name: Get key vault secrets
+      uses: azure/get-keyvault-secrets@v1
+      with:
+        keyvault: ${{ secrets.KEY_VAULT_NAME }}
+        secrets: '*'
+      id: kv
+    - name: Create .env file
+      run: |
+        cat << EOF >> .env
+        NODE_ENV = development
+        REDIS_URL = ${{ steps.kv.outputs.redis-url }}
+        REDIS_KEY = ${{ steps.kv.outputs.redis-key }}
+        CORS_ORIGIN = ${{ steps.kv.outputs.cors-origin }}
+        SESSION_SECRET = ${{ steps.kv.outputs.session-secret }}
+
+        TYPEORM_CONNECTION = mariadb
+        TYPEORM_LOGGING = true
+        TYPEORM_ENTITIES = src/entities/**/*.ts
+        TYPEORM_ENTITIES = src/migrations/**/*.ts
+        TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
+        TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
+        TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
+        TYPEORM_DATABASE = ${{ steps.kv.outputs.typeorm-database }}
+        TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
+        EOF
     - name: Build
       run: |
         yarn
-        yarn run build
+        yarn build
     - name: Deploy
       uses: azure/webapps-deploy@v2
       with:
