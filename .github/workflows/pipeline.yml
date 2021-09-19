@@ -40,8 +40,8 @@ jobs:
 
         TYPEORM_CONNECTION = mariadb
         TYPEORM_LOGGING = true
-        TYPEORM_ENTITIES = src/entities/**/*.ts
-        TYPEORM_ENTITIES = src/migrations/**/*.ts
+        TYPEORM_ENTITIES = dist/entities/**/*.js
+        TYPEORM_MIGRATIONS = dist/migrations/**/*.js
         TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
         TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
         TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
