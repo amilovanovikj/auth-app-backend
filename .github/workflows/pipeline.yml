@@ -26,7 +26,7 @@ jobs:
     - name: Get key vault secrets
       uses: azure/get-keyvault-secrets@v1
       with:
-        keyvault: ${{ secrets.KEY_VAULT_NAME }}
+        keyvault: ${{ secrets.DEV_KEY_VAULT_NAME }}
         secrets: '*'
       id: kv
     - name: Create .env file
