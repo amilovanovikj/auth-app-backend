@@ -33,6 +33,7 @@ jobs:
       run: |
         cat << EOF >> .env
         NODE_ENV = development
+        SERVER_PORT = ${{ steps.kv.outputs.server-port }}
         REDIS_URL = ${{ steps.kv.outputs.redis-url }}
         REDIS_KEY = ${{ steps.kv.outputs.redis-key }}
         CORS_ORIGIN = ${{ steps.kv.outputs.cors-origin }}
