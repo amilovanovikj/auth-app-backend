@@ -4,9 +4,8 @@ on:
     - feature/*
 
 env:
-  AZURE_WEBAPP_NAME: azwe-webapp-d01-auth
-  AZURE_WEBAPP_PACKAGE_PATH: '.'
-  NODE_VERSION: '14.x'
+  APP_NAME: auth-app-backend
+  AZURE_WEBAPP_NAME: azwe-backend-d01-auth
 
 jobs:
   build-and-deploy:
@@ -16,10 +15,6 @@ jobs:
     steps:
     - name: Git checkout
       uses: actions/checkout@v2
-    - name: Use Node.js ${{ env.NODE_VERSION }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ env.NODE_VERSION }}
     - name: Az login
       uses: azure/login@v1
       with:
@@ -27,13 +22,14 @@ jobs:
     - name: Get key vault secrets
       uses: azure/get-keyvault-secrets@v1
       with:
-        keyvault: ${{ secrets.DEV_KEY_VAULT_NAME }}
+        keyvault: ${{ secrets.KEY_VAULT_NAME_DEV }}
         secrets: '*'
       id: kv
     - name: Create .env file
       run: |
         cat << EOF >> .env
         NODE_ENV = development
+        PORT = ${{ steps.kv.outputs.server-port }}
         REDIS_URL = ${{ steps.kv.outputs.redis-url }}
         REDIS_KEY = ${{ steps.kv.outputs.redis-key }}
         CORS_ORIGIN = ${{ steps.kv.outputs.cors-origin }}
@@ -49,13 +45,23 @@ jobs:
         TYPEORM_DATABASE = ${{ steps.kv.outputs.typeorm-database }}
         TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
         EOF
-    - name: Build
+    - name: Docker login
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_SERVER }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    - name: Docker build
       run: |
-        yarn
-        yarn build
+        docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
+    - name: Docker push
+      run: |
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
     - name: Deploy
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        images: '${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}'
+    - name: Az logout
+      run: |
+        az logout
