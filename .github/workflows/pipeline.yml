@@ -18,11 +18,11 @@ jobs:
     - name: Az login
       uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
     - name: Get key vault secrets
       uses: azure/get-keyvault-secrets@v1
       with:
-        keyvault: ${{ secrets.KEY_VAULT_NAME_DEV }}
+        keyvault: ${{ secrets.KEY_VAULT_NAME }}
         secrets: '*'
       id: kv
     - name: Create .env file
