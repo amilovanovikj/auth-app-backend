@@ -45,12 +45,6 @@ jobs:
         TYPEORM_DATABASE = ${{ steps.kv.outputs.typeorm-database }}
         TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
         EOF
-    - name: Docker login
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ secrets.REGISTRY_SERVER }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
     - name: Docker build
       run: |
         docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
