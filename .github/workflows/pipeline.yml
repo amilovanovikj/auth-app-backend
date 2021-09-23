@@ -51,6 +51,7 @@ jobs:
         docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
     - name: Docker push
       run: |
+        az acr login --name ${{ secrets.REGISTRY_SERVER }}
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
     - name: Deploy
