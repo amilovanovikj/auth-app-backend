@@ -45,6 +45,12 @@ jobs:
         TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
         TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
         EOF
+    - name: Get runner public IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+    - name: Add runner IP to ACR firewall
+      run: |
+        az acr network-rule add -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }}
     - name: Docker login
       uses: azure/docker-login@v1
       with:
@@ -64,6 +70,9 @@ jobs:
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         images: '${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}'
+    - name: Remove runner IP from ACR firewall
+      run: |
+        az acr network-rule remove -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }}
     - name: Az logout
       run: |
         az logout
