@@ -45,13 +45,18 @@ jobs:
         TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
         TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
         EOF
+    - name: Docker login
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_SERVER }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
     - name: Docker build
       run: |
         docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
         docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:dev-latest
     - name: Docker push
       run: |
-        az acr login --name ${{ secrets.REGISTRY_SERVER }}
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:dev-latest
     - name: Deploy
