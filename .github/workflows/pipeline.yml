@@ -5,7 +5,7 @@ on:
 
 env:
   APP_NAME: auth-app-backend
-  AZURE_WEBAPP_NAME: azwe-backend-t01-auth
+  AZURE_WEBAPP_NAME: azwe-backend-d01-auth
 
 jobs:
   build-and-deploy:
@@ -39,21 +39,21 @@ jobs:
         TYPEORM_LOGGING = true
         TYPEORM_ENTITIES = dist/entities/**/*.js
         TYPEORM_MIGRATIONS = dist/migrations/**/*.js
+        TYPEORM_DATABASE = auth
         TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
         TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
         TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
-        TYPEORM_DATABASE = ${{ steps.kv.outputs.typeorm-database }}
         TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
         EOF
     - name: Docker build
       run: |
         docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
-        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
+        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:dev-latest
     - name: Docker push
       run: |
         az acr login --name ${{ secrets.REGISTRY_SERVER }}
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
-        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:dev-latest
     - name: Deploy
       uses: azure/webapps-deploy@v2
       with:
