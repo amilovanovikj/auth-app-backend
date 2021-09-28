@@ -18,5 +18,5 @@ RUN yarn
 COPY --from=build /home/auth-app-backend/dist ./dist
 
 EXPOSE 4000
-CMD yarn start
+CMD node ./dist/index.js
 USER node
