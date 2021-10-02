@@ -1,0 +1,85 @@
+on:
+  push:
+    branches:
+    - testing
+
+env:
+  APP_NAME: auth-app-backend
+  AZURE_WEBAPP_NAME: azwe-backend-t01-auth
+  GITHUB_ENV: testing
+  ENV_TYPE: test
+  NODE_VERSION: '16.x'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+    - name: Run integration tests
+      run: yarn test
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ secrets.GITHUB_ENV }}
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Get runner public IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+    - name: Add runner IP to ACR firewall
+      run: |
+        az acr network-rule add -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+    - name: Create .env file
+      run: |
+        cat << EOF >> .env
+        NODE_ENV = testing
+        VUE_APP_BACKEND_URL = ${{ secrets.BACKEND_URL }}
+        EOF
+    - name: Docker login
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_SERVER }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    - name: Docker build
+      run: |
+        docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
+        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ env.ENV_TYPE }}-latest
+    - name: Docker push
+      run: |
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ env.ENV_TYPE }}-latest
+    - name: Deploy
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: '${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}'
+    - name: Remove runner IP from ACR firewall
+      if: always()
+      run: |
+        az acr network-rule remove -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+    - name: Az logout
+      if: always()
+      run: |
+        az logout
