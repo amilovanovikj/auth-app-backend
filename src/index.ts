@@ -4,11 +4,10 @@ import connectRedis from "connect-redis";
 import { createClient } from "redis";
 import cors from "cors";
 import { ApolloServer } from 'apollo-server-express';
-import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
 import { COOKIE_NAME, __prod__ } from "./constants";
-import { UserResolver } from "./resolvers/UserResolver";
 import { AuthContext } from "./types";
+import { createSchema } from "./utils/createSchema";
 
 const main = async () => {
   const connection = await createConnection();
@@ -53,18 +52,12 @@ const main = async () => {
   );
 
   const apolloServer = new ApolloServer({
-    schema: await buildSchema({
-      resolvers: [
-        UserResolver
-      ],
-      validate: false
-    }),
+    schema: await createSchema(),
     context: ({ req, res }): AuthContext => ({ req, res }),
   });
 
   await apolloServer.start()
   apolloServer.applyMiddleware({ app, cors: false })
-  // apolloServer.applyMiddleware({ app })
 
   app.listen(process.env.PORT, () => {
     console.log('server started on port', process.env.PORT);
