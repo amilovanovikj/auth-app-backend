@@ -12,6 +12,9 @@ export const testConn = (drop: boolean = false) => {
     entities: ["src/entities/**/*.ts"],
     migrations: ["src/migrations/**/*.ts"],
     dropSchema: drop,
-    synchronize: true
+    synchronize: true,
+    ssl: {
+      rejectUnauthorized: false
+    },
   })
 }
