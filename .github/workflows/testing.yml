@@ -2,6 +2,7 @@ on:
   push:
     branches:
     - testing
+    - feature/ci-cd
 
 env:
   APP_NAME: auth-app-backend
