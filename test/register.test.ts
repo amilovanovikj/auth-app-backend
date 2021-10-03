@@ -1,6 +1,6 @@
 
 import { gqlCall } from "../src/test-utils/gqlCall";
-import { testConn } from "../src/test-utils/testConn";
+import { getDatabaseConnection } from "../src/utils/getDatabaseConnection";
 import { Request, Response } from 'express';
 import { Session, SessionData } from 'express-session';
 import { Connection } from "typeorm";
@@ -8,7 +8,7 @@ import { User } from "../src/entities/User";
 
 let conn: Connection;
 beforeAll(async () => {
-  conn = await testConn();
+  conn = await getDatabaseConnection();
 })
 afterAll(async () => {
   await conn.close()

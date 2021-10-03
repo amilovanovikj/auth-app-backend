@@ -1,3 +1,3 @@
-import { testConn } from "./testConn";
+import { getDatabaseConnection } from "../utils/getDatabaseConnection";
 
-testConn(true).then(() => process.exit());
+getDatabaseConnection(true).then(() => process.exit());

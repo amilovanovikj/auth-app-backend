@@ -4,13 +4,13 @@ import connectRedis from "connect-redis";
 import { createClient } from "redis";
 import cors from "cors";
 import { ApolloServer } from 'apollo-server-express';
-import { createConnection } from "typeorm";
+import { getDatabaseConnection } from "./utils/getDatabaseConnection";
 import { COOKIE_NAME, __prod__ } from "./constants";
 import { AuthContext } from "./types";
 import { createSchema } from "./utils/createSchema";
 
 const main = async () => {
-  const connection = await createConnection();
+  const connection = await getDatabaseConnection();
   
   // await connection.runMigrations();
   connection.synchronize();
