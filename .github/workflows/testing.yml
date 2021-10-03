@@ -5,6 +5,9 @@ on:
     - feature/ci-cd
 
 env:
+  RESOURCE_GROUP_NAME: auth-test-01-rg
+  SQL_SERVER_NAME: azwe-sql-t01-auth
+  REDIS_CACHE_NAME: azwe-sessionstore-t01-auth
   APP_NAME: auth-app-backend
   AZURE_WEBAPP_NAME: azwe-backend-t01-auth
   ENV_TYPE: test
@@ -14,11 +17,48 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    environment: testing
     steps:
     - name: Git checkout
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Get runner public IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+    - name: Allow access from runner IP
+      run: |
+        az redis firewall-rules create -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD --start-ip ${{ steps.ip.outputs.ipv4 }} --end-ip ${{ steps.ip.outputs.ipv4 }}
+        az mariadb server firewall-rule create -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD --start-ip-address ${{ steps.ip.outputs.ipv4 }} --end-ip-address ${{ steps.ip.outputs.ipv4 }}
+    - name: Get key vault secrets
+      uses: azure/get-keyvault-secrets@v1
+      with:
+        keyvault: ${{ secrets.KEY_VAULT_NAME }}
+        secrets: '*'
+      id: kv
+    - name: Create .env file
+      run: |
+        cat << EOF >> .env
+        NODE_ENV = development
+        PORT = ${{ steps.kv.outputs.server-port }}
+        REDIS_URL = ${{ steps.kv.outputs.redis-url }}
+        REDIS_KEY = ${{ steps.kv.outputs.redis-key }}
+        CORS_ORIGIN = ${{ steps.kv.outputs.cors-origin }}
+        SESSION_SECRET = ${{ steps.kv.outputs.session-secret }}
+        TYPEORM_CONNECTION = mariadb
+        TYPEORM_LOGGING = true
+        TYPEORM_ENTITIES = dist/entities/**/*.js
+        TYPEORM_MIGRATIONS = dist/migrations/**/*.js
+        TYPEORM_DATABASE = auth
+        TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
+        TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
+        TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
+        TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
+        EOF
     - name: Use Node.js ${{ env.NODE_VERSION }}
       uses: actions/setup-node@v1
       with:
@@ -32,6 +72,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Remove runner IP from ACR firewall
+      if: always()
+      run: |
+        az redis firewall-rules delete -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD
+        az mariadb server firewall-rule delete -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD -y
 
   build-and-deploy:
     name: Build and Deploy
