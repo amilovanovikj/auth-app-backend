@@ -32,8 +32,8 @@ jobs:
       uses: haythem/public-ip@v1.2
     - name: Allow access from runner IP
       run: |
-        az redis firewall-rules create -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD --start-ip ${{ steps.ip.outputs.ipv4 }} --end-ip ${{ steps.ip.outputs.ipv4 }}
-        az mariadb server firewall-rule create -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD --start-ip-address ${{ steps.ip.outputs.ipv4 }} --end-ip-address ${{ steps.ip.outputs.ipv4 }}
+        az redis firewall-rules create -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD --start-ip ${{ steps.ip.outputs.ipv4 }} --end-ip ${{ steps.ip.outputs.ipv4 }} > /dev/null
+        az mariadb server firewall-rule create -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD --start-ip-address ${{ steps.ip.outputs.ipv4 }} --end-ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
     - name: Get key vault secrets
       uses: azure/get-keyvault-secrets@v1
       with:
@@ -72,8 +72,8 @@ jobs:
     - name: Remove access from runner IP
       if: always()
       run: |
-        az redis firewall-rules delete -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD
-        az mariadb server firewall-rule delete -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD -y
+        az redis firewall-rules delete -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD > /dev/null
+        az mariadb server firewall-rule delete -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD -y > /dev/null
 
   build-and-deploy:
     name: Build and Deploy
@@ -99,10 +99,13 @@ jobs:
         keyvault: ${{ secrets.KEY_VAULT_NAME }}
         secrets: '*'
       id: kv
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
     - name: Create .env file
       run: |
         cat << EOF >> .env
-        NODE_ENV = development
+        NODE_ENV = testing
+        CERT_LOCATION = BaltimoreCyberTrustRoot.crt.pem
         PORT = ${{ steps.kv.outputs.server-port }}
         REDIS_URL = ${{ steps.kv.outputs.redis-url }}
         REDIS_KEY = ${{ steps.kv.outputs.redis-key }}

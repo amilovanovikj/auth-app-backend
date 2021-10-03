@@ -32,10 +32,13 @@ jobs:
         keyvault: ${{ secrets.KEY_VAULT_NAME }}
         secrets: '*'
       id: kv
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
     - name: Create .env file
       run: |
         cat << EOF >> .env
         NODE_ENV = development
+        CERT_LOCATION = BaltimoreCyberTrustRoot.crt.pem
         PORT = ${{ steps.kv.outputs.server-port }}
         REDIS_URL = ${{ steps.kv.outputs.redis-url }}
         REDIS_KEY = ${{ steps.kv.outputs.redis-key }}

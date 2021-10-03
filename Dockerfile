@@ -19,7 +19,7 @@ WORKDIR /usr/src/app
 COPY --chown=node:node --from=build /usr/src/app/node_modules node_modules
 COPY --chown=node:node --from=build /usr/src/app/dist dist
 COPY --chown=node:node .env .env
-RUN wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem 
+COPY --chown=node:node BaltimoreCyberTrustRoot.crt.pem BaltimoreCyberTrustRoot.crt.pem
 
 EXPOSE 4000
 CMD ["dumb-init", "node", "dist/index.js"]
