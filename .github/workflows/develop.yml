@@ -6,7 +6,6 @@ on:
 env:
   APP_NAME: auth-app-backend
   AZURE_WEBAPP_NAME: azwe-backend-d01-auth
-  ENV_TYPE: dev
 
 jobs:
   build-and-deploy:
@@ -26,48 +25,22 @@ jobs:
     - name: Add runner IP to ACR firewall
       run: |
         az acr network-rule add -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
-    - name: Get key vault secrets
-      uses: azure/get-keyvault-secrets@v1
-      with:
-        keyvault: ${{ secrets.KEY_VAULT_NAME }}
-        secrets: '*'
-      id: kv
-    - name: Import CA certs
-      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
-    - name: Create .env file
-      run: |
-        cat << EOF >> .env
-        NODE_ENV = development
-        CERT_LOCATION = BaltimoreCyberTrustRoot.crt.pem
-        PORT = ${{ steps.kv.outputs.server-port }}
-        REDIS_URL = ${{ steps.kv.outputs.redis-url }}
-        REDIS_KEY = ${{ steps.kv.outputs.redis-key }}
-        CORS_ORIGIN = ${{ steps.kv.outputs.cors-origin }}
-        SESSION_SECRET = ${{ steps.kv.outputs.session-secret }}
-        TYPEORM_CONNECTION = mariadb
-        TYPEORM_LOGGING = true
-        TYPEORM_ENTITIES = dist/entities/**/*.js
-        TYPEORM_MIGRATIONS = dist/migrations/**/*.js
-        TYPEORM_DATABASE = auth
-        TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
-        TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
-        TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
-        TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
-        EOF
     - name: Docker login
       uses: azure/docker-login@v1
       with:
         login-server: ${{ secrets.REGISTRY_SERVER }}
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
     - name: Docker build
       run: |
         docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
-        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ env.ENV_TYPE }}-latest
+        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
     - name: Docker push
       run: |
         docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
-        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ env.ENV_TYPE }}-latest
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:latest
     - name: Deploy
       uses: azure/webapps-deploy@v2
       with:
