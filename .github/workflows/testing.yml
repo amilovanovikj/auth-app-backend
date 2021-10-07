@@ -30,7 +30,7 @@ jobs:
       uses: haythem/public-ip@v1.2
     - name: Allow access from runner IP
       run: |
-        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} --public-network-access Enabled
+        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.SQL_SERVER_NAME }} --public-network-access Enabled
         az redis firewall-rules create -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD --start-ip ${{ steps.ip.outputs.ipv4 }} --end-ip ${{ steps.ip.outputs.ipv4 }} > /dev/null
         az mariadb server firewall-rule create -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD --start-ip-address ${{ steps.ip.outputs.ipv4 }} --end-ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
         az keyvault network-rule add -n ${{ secrets.KEY_VAULT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
@@ -74,7 +74,7 @@ jobs:
       run: |
         az redis firewall-rules delete -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD > /dev/null
         az mariadb server firewall-rule delete -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD -y > /dev/null
-        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} --public-network-access Disabled > /dev/null
+        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.SQL_SERVER_NAME }} --public-network-access Disabled > /dev/null
         az keyvault network-rule remove -n ${{ secrets.KEY_VAULT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} --ip-address ${{ steps.ip.outputs.ipv4 }}/32 > /dev/null
 
   build-and-deploy:
