@@ -2,7 +2,6 @@ on:
   push:
     branches:
     - testing
-    - feature/ci-cd
 
 env:
   RESOURCE_GROUP_NAME: auth-test-01-rg
