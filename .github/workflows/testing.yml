@@ -1,0 +1,126 @@
+on:
+  push:
+    branches:
+    - testing
+
+env:
+  RESOURCE_GROUP_NAME: auth-test-01-rg
+  SQL_SERVER_NAME: azwe-sql-t01-auth
+  REDIS_CACHE_NAME: azwe-sessionstore-t01-auth
+  APP_NAME: auth-app-backend
+  AZURE_WEBAPP_NAME: azwe-backend-t01-auth
+  NODE_VERSION: '16.x'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    environment: testing
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Get runner public IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+    - name: Allow access from runner IP
+      run: |
+        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.SQL_SERVER_NAME }} --public-network-access Enabled
+        az redis firewall-rules create -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD --start-ip ${{ steps.ip.outputs.ipv4 }} --end-ip ${{ steps.ip.outputs.ipv4 }} > /dev/null
+        az mariadb server firewall-rule create -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD --start-ip-address ${{ steps.ip.outputs.ipv4 }} --end-ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+        az keyvault network-rule add -n ${{ secrets.KEY_VAULT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+    - name: Get key vault secrets
+      uses: azure/get-keyvault-secrets@v1
+      with:
+        keyvault: ${{ secrets.KEY_VAULT_NAME }}
+        secrets: '*'
+      id: kv
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
+    - name: Create .env file
+      run: |
+        cat << EOF >> .env
+        NODE_ENV = testing
+        CERT_LOCATION = ${{ steps.kv.outputs.cert-location }}
+        TYPEORM_HOST = ${{ steps.kv.outputs.typeorm-host }}
+        TYPEORM_DATABASE = ${{ steps.kv.outputs.typeorm-database }}
+        TYPEORM_USERNAME = ${{ steps.kv.outputs.typeorm-username }}
+        TYPEORM_PASSWORD = ${{ steps.kv.outputs.typeorm-password }}
+        TYPEORM_PORT = ${{ steps.kv.outputs.typeorm-port }}
+        TYPEORM_LOGGING = false
+        TYPEORM_ENTITIES = src/entities/**/*.ts
+        TYPEORM_MIGRATIONS = src/migrations/**/*.ts
+        EOF
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+    - name: Run integration tests
+      run: yarn test
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Remove access from runner IP
+      if: always()
+      run: |
+        az redis firewall-rules delete -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.REDIS_CACHE_NAME }} --rule-name CI_CD > /dev/null
+        az mariadb server firewall-rule delete -g ${{ env.RESOURCE_GROUP_NAME }} -s ${{ env.SQL_SERVER_NAME }} -n CI_CD -y > /dev/null
+        az mariadb server update -g ${{ env.RESOURCE_GROUP_NAME }} -n ${{ env.SQL_SERVER_NAME }} --public-network-access Disabled > /dev/null
+        az keyvault network-rule remove -n ${{ secrets.KEY_VAULT_NAME }} -g ${{ env.RESOURCE_GROUP_NAME }} --ip-address ${{ steps.ip.outputs.ipv4 }}/32 > /dev/null
+
+  build-and-deploy:
+    name: Build and Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    environment: testing
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Get runner public IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+    - name: Add runner IP to ACR firewall
+      run: |
+        az acr network-rule add -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+    - name: Docker login
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_SERVER }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
+    - name: Docker build
+      run: |
+        docker build -t ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} .
+        docker tag ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }} ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:lts
+    - name: Docker push
+      run: |
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}
+        docker push ${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:lts
+    - name: Deploy
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: '${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}'
+    - name: Remove runner IP from ACR firewall
+      if: always()
+      run: |
+        az acr network-rule remove -n ${{ secrets.REGISTRY_SERVER }} -g ${{ secrets.REGISTRY_RESOURCE_GROUP }} --ip-address ${{ steps.ip.outputs.ipv4 }} > /dev/null
+    - name: Az logout
+      if: always()
+      run: |
+        az logout
