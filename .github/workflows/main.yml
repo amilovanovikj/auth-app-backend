@@ -1,0 +1,48 @@
+on:
+  push:
+    branches:
+    - main
+
+env:
+  APP_NAME: auth-app-backend
+  AZURE_WEBAPP_NAME: azwe-backend-p01-auth
+  NODE_VERSION: '16.x'
+
+jobs:
+  scan:
+    name: Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  deploy:
+    name: Deploy
+    needs: scan
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+    - name: Az login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Deploy
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: '${{ secrets.REGISTRY_SERVER }}/${{ env.APP_NAME }}:lts'
+    - name: Az logout
+      if: always()
+      run: |
+        az logout
