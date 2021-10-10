@@ -38,7 +38,7 @@ jobs:
       uses: azure/get-keyvault-secrets@v1
       with:
         keyvault: ${{ secrets.KEY_VAULT_NAME }}
-        secrets: '*'
+        secrets: 'cert-location, typeorm-host, typeorm-database, typeorm-username, typeorm-password, typeorm-port'
       id: kv
     - name: Import CA certs
       run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
