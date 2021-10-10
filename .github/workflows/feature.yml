@@ -24,6 +24,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Import CA certs
+      run: wget https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt.pem
     - name: Docker build
       run: docker build -t auth-app-backend:snyk .
     - name: Run Snyk
