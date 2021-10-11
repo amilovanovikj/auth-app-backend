@@ -1,3 +1,5 @@
+let appInsights = require("applicationinsights");
+
 import express from "express";
 import session from "express-session";
 import connectRedis from "connect-redis";
@@ -10,6 +12,8 @@ import { AuthContext } from "./types";
 import { createSchema } from "./utils/createSchema";
 
 const main = async () => {
+  appInsights.setup().start()
+  
   const connection = await getDatabaseConnection();
   
   // await connection.runMigrations();
