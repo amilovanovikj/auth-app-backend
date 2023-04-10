@@ -47,6 +47,6 @@
     "sinon": "^11.1.2",
     "ts-node": "^10.2.1",
     "type-graphql": "^1.1.1",
-    "typeorm": "^0.2.37"
+    "typeorm": "^0.3.14"
   }
 }
